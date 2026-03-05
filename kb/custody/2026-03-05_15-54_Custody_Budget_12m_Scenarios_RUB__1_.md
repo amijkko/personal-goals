@@ -1,6 +1,7 @@
 # Custody_Budget_12m_Scenarios_RUB (1).xlsx
 *Added: 2026-03-05 15:54*
 *Project: Custody*
+*File ID: BQACAgIAAxkDAAOlaamqe5meRCMI7I94oBTn2mANhloAAreQAAKH9EhJykkMP6JvsZs6BA*
 
 ## Summary
 1. **Ключевые допущения**: Установлен курс USD/RUB на уровне 76.0, комиссия BD составляет 0% от выручки, плановая выручка — 0 рублей.
