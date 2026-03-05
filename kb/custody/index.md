@@ -1,6 +1,7 @@
 # Knowledge Base — Custody
 
 ## Documents
+- [Протокол_Договоренностей_—_Встреча_С_Никитой_editable.docx](2026-03-05_13-12_Протокол_Договоренностей___Встреча_С_Никитой_editable.md) — 2026-03-05
 - [Коллайдер_IR_Записка.pdf](2026-03-05_13-11_Коллаи_дер_IR_Записка.md) — 2026-03-05
 - [Investicionnaya-zapiska (1) (1).pdf](2026-03-05_13-10_Investicionnaya-zapiska__1___1_.md) — 2026-03-05
 - [Custody_Budget_12m_Scenarios_RUB - Сценарии.pdf](2026-03-05_13-10_Custody_Budget_12m_Scenarios_RUB_-_Сценарии.md) — 2026-03-05
