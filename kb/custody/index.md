@@ -31,6 +31,12 @@
 - [Инвестиционная записка](2026-03-05_13-10_Investicionnaya-zapiska__1___1_.md)
 - [Бюджет 12м (сценарии)](2026-03-05_15-54_Custody_Budget_12m_Scenarios_RUB__1_.md)
 
+## Полезные ссылки
+- [CGGMP21 — MPC threshold signature spec](https://lfdt-lockness.github.io/cggmp21/cggmp21-spec.pdf) `#MPC #продукт`
+- [GHSA-8frv — MPC vulnerability advisory](https://github.com/advisories/GHSA-8frv-q972-9rq5) `#MPC #продукт`
+- [Dfns — Key-under-23 attack](https://www.dfns.co/article/ku23) `#MPC #продукт`
+- [Pragmatic MPC — учебник по MPC](https://www.cs.virginia.edu/~evans/pragmaticmpc/pragmaticmpc.pdf) `#MPC #продукт`
+
 ## Insights
 - кастоди - человек из сбера говорил что стоимость коробки кастоди может стоить до 50 млн рублей — `#финансы #продукт #стратегия` _2026-03-05 14:33_
 
