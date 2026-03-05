@@ -41,6 +41,7 @@
 - кастоди - человек из сбера говорил что стоимость коробки кастоди может стоить до 50 млн рублей — `#финансы #продукт #стратегия` _2026-03-05 14:33_
 
 ## Documents
+- [PROJECT_STATUS.md](2026-03-05_16-20_PROJECT_STATUS.md) — 2026-03-05
 - [KYT Office - API Guide v1.4.pdf](2026-03-05_16-09_KYT_Office_-_API_Guide_v1.4.md) — 2026-03-05
 - [TEST_COVERAGE_BUSINESS.pdf](2026-03-05_16-06_TEST_COVERAGE_BUSINESS.md) — 2026-03-05
 - [TESTS.md](2026-03-05_16-06_TESTS.md) — 2026-03-05
