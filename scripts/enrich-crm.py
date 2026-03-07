@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
-"""Daily CRM enrichment: scan journal/, meetings/, kb/ for new mentions of contacts."""
+"""Daily CRM enrichment: scan journal/, meetings/ for new mentions of contacts.
+Uses a single DB connection for speed."""
 import os
 import sys
-import re
 from datetime import datetime, timezone, timedelta
 
 GOALS_DIR = os.path.expanduser("~/goals")
 BOT_DIR = os.path.expanduser("~/telegram-backlog-bot")
 sys.path.insert(0, BOT_DIR)
 
+# Resolve DATABASE_URL
 DATABASE_URL = os.environ.get("CRM_DATABASE_URL") or os.environ.get("DATABASE_URL", "")
-
-# Fallback: read from bot's .env
 if not DATABASE_URL:
     env_path = os.path.join(BOT_DIR, ".env")
     if os.path.exists(env_path):
@@ -20,86 +19,55 @@ if not DATABASE_URL:
                 if line.startswith("DATABASE_URL="):
                     DATABASE_URL = line.strip().split("=", 1)[1]
                     break
-
 if not DATABASE_URL:
-    # Hardcoded fallback for local cron
     DATABASE_URL = "postgresql://postgres:TIKpyViTcgQVrhscBSOEnrUyDwoAUePR@shortline.proxy.rlwy.net:28452/railway"
-
 os.environ["DATABASE_URL"] = DATABASE_URL
 
 try:
-    from crm_db import get_conn, find_contact, add_interaction, add_fact
+    import psycopg2
     import psycopg2.extras
 except ImportError:
-    print("crm_db not available, skipping")
+    print("psycopg2 not available, skipping")
     sys.exit(0)
 
 MOSCOW_TZ = timezone(timedelta(hours=3))
-TODAY = datetime.now(MOSCOW_TZ).strftime("%Y-%m-%d")
+TODAY = datetime.now(MOSCOW_TZ).date()
 
 
-def get_all_contacts():
-    """Get all contact names from DB."""
-    conn = get_conn()
-    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    cur.execute("SELECT id, name FROM contacts ORDER BY id")
-    contacts = cur.fetchall()
-    # Also get aliases
-    cur.execute("SELECT contact_id, alias FROM contact_aliases")
-    aliases = {}
-    for r in cur.fetchall():
-        aliases.setdefault(r["contact_id"], []).append(r["alias"])
-    cur.close()
-    conn.close()
-    return contacts, aliases
-
-
-def get_existing_interactions(contact_id):
-    """Get existing interaction summaries to avoid dupes."""
-    conn = get_conn()
-    cur = conn.cursor()
-    cur.execute("SELECT summary FROM interactions WHERE contact_id = %s", (contact_id,))
-    result = {r[0] for r in cur.fetchall()}
-    cur.close()
-    conn.close()
-    return result
-
-
-def scan_file(filepath, contact_name, first_word):
-    """Find lines mentioning a contact in a file."""
-    mentions = []
-    try:
-        with open(filepath, "r") as f:
-            content = f.read()
-        if first_word.lower() not in content.lower():
-            return []
-        for line in content.split("\n"):
-            if first_word.lower() in line.lower() and line.strip():
-                clean = line.strip().lstrip("- ").lstrip("* ").strip()
-                if len(clean) > 10 and not clean.startswith("#"):
-                    mentions.append(clean)
-    except Exception:
-        pass
-    return mentions
-
-
-def scan_directory(dirpath, contact_name, first_word):
-    """Scan all .md files in a directory for contact mentions."""
-    results = {}  # filename -> [mentions]
+def scan_dir(dirpath):
+    """Read all .md files in a directory. Returns {filename: content}."""
+    result = {}
     if not os.path.isdir(dirpath):
-        return results
+        return result
     for fname in os.listdir(dirpath):
         if not fname.endswith(".md"):
             continue
-        fpath = os.path.join(dirpath, fname)
-        mentions = scan_file(fpath, contact_name, first_word)
-        if mentions:
-            results[fname] = mentions
-    return results
+        try:
+            with open(os.path.join(dirpath, fname), "r") as f:
+                result[fname] = f.read()
+        except Exception:
+            pass
+    return result
 
 
 def main():
-    contacts, aliases = get_all_contacts()
+    conn = psycopg2.connect(DATABASE_URL)
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    # Load all contacts
+    cur.execute("SELECT id, name FROM contacts ORDER BY id")
+    contacts = cur.fetchall()
+
+    # Load all existing interaction summaries (one query)
+    cur.execute("SELECT contact_id, summary FROM interactions")
+    existing = {}
+    for r in cur.fetchall():
+        existing.setdefault(r["contact_id"], set()).add(r["summary"])
+
+    # Pre-read all files
+    journal_files = scan_dir(os.path.join(GOALS_DIR, "journal"))
+    meeting_files = scan_dir(os.path.join(GOALS_DIR, "meetings"))
+
     total_added = 0
 
     for contact in contacts:
@@ -107,36 +75,54 @@ def main():
         name = contact["name"]
         first_word = name.split()[0]
 
-        # Skip very short names that would match too broadly
         if len(first_word) < 3:
             continue
 
-        existing = get_existing_interactions(cid)
+        contact_existing = existing.get(cid, set())
+        fw_lower = first_word.lower()
 
-        # Scan journal/
-        journal_mentions = scan_directory(
-            os.path.join(GOALS_DIR, "journal"), name, first_word
-        )
-        for fname, mentions in journal_mentions.items():
+        # Scan journal
+        for fname, content in journal_files.items():
+            if fw_lower not in content.lower():
+                continue
             date_str = fname.replace(".md", "")
-            for m in mentions:
-                summary = f"[journal {date_str}] {m[:200]}"
-                if summary not in existing:
-                    add_interaction(cid, "заметка", summary, source="daily-enrich")
-                    existing.add(summary)
+            for line in content.split("\n"):
+                if fw_lower not in line.lower() or not line.strip():
+                    continue
+                clean = line.strip().lstrip("- ").lstrip("* ").strip()
+                if len(clean) <= 10 or clean.startswith("#"):
+                    continue
+                summary = f"[journal {date_str}] {clean[:200]}"
+                if summary not in contact_existing:
+                    cur.execute(
+                        "INSERT INTO interactions (contact_id, type, date, summary, source) VALUES (%s, %s, %s, %s, %s)",
+                        (cid, "заметка", TODAY, summary, "daily-enrich")
+                    )
+                    contact_existing.add(summary)
                     total_added += 1
 
-        # Scan meetings/
-        meeting_mentions = scan_directory(
-            os.path.join(GOALS_DIR, "meetings"), name, first_word
-        )
-        for fname, mentions in meeting_mentions.items():
-            for m in mentions:
-                summary = f"[meeting {fname}] {m[:200]}"
-                if summary not in existing:
-                    add_interaction(cid, "встреча", summary, source="daily-enrich")
-                    existing.add(summary)
+        # Scan meetings
+        for fname, content in meeting_files.items():
+            if fw_lower not in content.lower():
+                continue
+            for line in content.split("\n"):
+                if fw_lower not in line.lower() or not line.strip():
+                    continue
+                clean = line.strip().lstrip("- ").lstrip("* ").strip()
+                if len(clean) <= 10 or clean.startswith("#"):
+                    continue
+                summary = f"[meeting {fname}] {clean[:200]}"
+                if summary not in contact_existing:
+                    cur.execute(
+                        "INSERT INTO interactions (contact_id, type, date, summary, source) VALUES (%s, %s, %s, %s, %s)",
+                        (cid, "встреча", TODAY, summary, "daily-enrich")
+                    )
+                    contact_existing.add(summary)
                     total_added += 1
+
+    conn.commit()
+    cur.close()
+    conn.close()
 
     print(f"CRM enrichment done: +{total_added} interactions from files")
 
