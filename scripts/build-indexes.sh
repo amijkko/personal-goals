@@ -175,3 +175,10 @@ PROJECT_LABELS=("Custody" "Opinion Market" "Sber" "Reksoft" "Personal")
 echo "Indexes built: $NOW"
 echo "  $PEOPLE_INDEX"
 echo "  $PROJECTS_INDEX"
+
+# ============================================
+# 3. CRM ENRICHMENT (if DATABASE_URL is set)
+# ============================================
+if [ -n "$DATABASE_URL" ] || [ -n "$CRM_DATABASE_URL" ]; then
+    python3 "$GOALS_DIR/scripts/enrich-crm.py" 2>&1
+fi
