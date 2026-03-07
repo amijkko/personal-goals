@@ -10,3 +10,6 @@ fi
 git add -A
 git commit -m "auto-sync: $(date '+%Y-%m-%d %H:%M')" --quiet 2>/dev/null
 git push --quiet 2>/dev/null
+
+# Enrich CRM database in background (don't block the hook)
+python3 ~/goals/scripts/enrich-crm.py &>/dev/null &
