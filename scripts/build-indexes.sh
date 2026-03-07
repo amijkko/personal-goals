@@ -177,8 +177,6 @@ echo "  $PEOPLE_INDEX"
 echo "  $PROJECTS_INDEX"
 
 # ============================================
-# 3. CRM ENRICHMENT (if DATABASE_URL is set)
+# 3. CRM ENRICHMENT (daily, DB URL resolved in script)
 # ============================================
-if [ -n "$DATABASE_URL" ] || [ -n "$CRM_DATABASE_URL" ]; then
-    python3 "$GOALS_DIR/scripts/enrich-crm.py" 2>&1
-fi
+python3 "$GOALS_DIR/scripts/enrich-crm.py" 2>&1

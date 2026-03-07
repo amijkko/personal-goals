@@ -10,9 +10,20 @@ BOT_DIR = os.path.expanduser("~/telegram-backlog-bot")
 sys.path.insert(0, BOT_DIR)
 
 DATABASE_URL = os.environ.get("CRM_DATABASE_URL") or os.environ.get("DATABASE_URL", "")
+
+# Fallback: read from bot's .env
 if not DATABASE_URL:
-    print("No DATABASE_URL set, skipping CRM enrichment")
-    sys.exit(0)
+    env_path = os.path.join(BOT_DIR, ".env")
+    if os.path.exists(env_path):
+        with open(env_path) as f:
+            for line in f:
+                if line.startswith("DATABASE_URL="):
+                    DATABASE_URL = line.strip().split("=", 1)[1]
+                    break
+
+if not DATABASE_URL:
+    # Hardcoded fallback for local cron
+    DATABASE_URL = "postgresql://postgres:TIKpyViTcgQVrhscBSOEnrUyDwoAUePR@shortline.proxy.rlwy.net:28452/railway"
 
 os.environ["DATABASE_URL"] = DATABASE_URL
 
